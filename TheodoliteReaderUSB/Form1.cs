@@ -344,8 +344,6 @@ namespace TheodoliteReaderUSB
             
             try
             {
-
-
                 //Data collection area starts at row 3, col 2.
                 var rowOffset = 3;
                 var colOffset = 2;
@@ -399,7 +397,7 @@ namespace TheodoliteReaderUSB
                 var rndHz = Math.Round((gsiParser.VerticalAngle / 5)) * 5;
                 var rndAz = Math.Round((gsiParser.HorizontalAngle / 5)) * 5;
 
-                var countColumns = ((Math.Abs(myHorzRight) + Math.Abs(myHorzLeft)) / 5) + 1;                          //Include zero in the count by adding one.
+                var countColumns = ((Math.Abs(myHorzRight) + Math.Abs(myHorzLeft)) / 5) + 1;       //Include zero in the count by adding one.
                 var countRows = ((Math.Abs(myVertUpFOV) + Math.Abs(myVertDownFOV)) / 5) + 1;       //Include zero in the count by adding one.
 
                 //find the correct row for the data

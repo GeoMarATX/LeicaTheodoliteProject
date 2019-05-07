@@ -1,32 +1,30 @@
 ﻿//  ParseGSI
 //  Written by: George Marsden III
 //  03/29/2019
-//  "Leica Geo Serial Interface (GSI) is a generis a general purpose, serial data interface for bi-directional communication
-//  between the instrument and the computer.GSI uses a simple command structure to read/write values
-//  from/to the sensor.Global and instrument specific Word Indexes (WI) are used to specify various data types."
 //
-//  This class will parse a GSI formatted string and extract some information. Not all GSI features are supported by this class.
-//  The information which is extracted is limited and therefore this class is limited:
-//      -All distance data must be in meters.
-//      -All spherical measurements must be in decimal degrees.
-//      -Only the WIs listed in the private member 'fields' are supported.
+//  "Leica Geo Serial Interface (GSI) is a generis a general purpose, serial data interface for bi-directional communication
+//  between the instrument and the computer. GSI uses a simple command structure to read/write values
+//  from/to the sensor. Global and instrument specific Word Indexes (WI) are used to specify various data types."
+//  Excerpt from:
+//  https://w3.leica-geosystems.com/media/new/product_solution/gsi_manual.pdf
+//
+//  This class will parse a GSI formatted string and then extract some information. The extracted information can be retreived by the various 'get' methods.
+//  
+//  Not all GSI features are supported by this class.
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace TheodoliteReaderUSB
 {
-    public enum DataFormatGSI { GSI8, GSI16 };
+    public enum GSIDataFormat { GSI8, GSI16 };
     public enum VerticalAngleMode { ZERO_TO_360, PLUS_MINUS_180 };
     public enum HorizontalAngleMode { ZERO_TO_360, PLUS_MINUS_180 };
     public enum GSIUnits { METER, FEET, GON, DECIMAL_360, SEXAGESIMAL, MIL6400, METER_ONE_TENTH, FEET_ONE_TENTHOUSANTH, METER_ONE_HUNDREDTH}
 
     class ParseGSI
     {
-        //Word Indexes (WI)
+        //  Word Indexes (WI)
         private const string POINTNUMBER = "11";
         private const string HORIZONTAL_ANGLE = "21";
         private const string VERTICAL_ANGLE = "22";
@@ -35,13 +33,14 @@ namespace TheodoliteReaderUSB
         private const string TARGET_EASTING = "81";
         private const string TARGET_NORTHING = "82";
         private const string TARGET_ELEVATION = "83";
-
+        
         private static string rawGSIString;
 
         private static HorizontalAngleMode horizontalAngleMode;
         private static VerticalAngleMode verticalAngleMode;
-        private static DataFormatGSI wordFormat;
+        private static GSIDataFormat wordFormat;
 
+        //  Extracted GSI data
         private static int pointNumber;
         private static Decimal horizontalAngle;
         private static Decimal verticalAngle;
@@ -52,7 +51,7 @@ namespace TheodoliteReaderUSB
         private static Decimal targetElevation;
 
         /// <summary>
-        /// Default constructor. Initializes the input string to an empty string. HorizontalAngleMode and VerticalAngleMode default to PLUS_MINUS_180.
+        /// Default constructor.
         /// </summary>
         public ParseGSI()
         {
@@ -88,7 +87,7 @@ namespace TheodoliteReaderUSB
         }
 
         /// <summary>
-        /// This method is called everytime the rawGSIString is updated. rawGSIString is updated by set property Raw.
+        /// This method is called everytime rawGSIString is updated with a call to Raw.
         /// </summary>
         private void update()
         {
@@ -96,11 +95,11 @@ namespace TheodoliteReaderUSB
             {
                 if (rawGSIString.ElementAt(0) == '*')
                 {
-                    wordFormat = DataFormatGSI.GSI16;
+                    wordFormat = GSIDataFormat.GSI16;
                 }
                 else
                 {
-                    wordFormat = DataFormatGSI.GSI8;
+                    wordFormat = GSIDataFormat.GSI8;
                 }
 
                 rawGSIString = rawGSIString.ToString().TrimEnd('\r', '\n');
@@ -149,7 +148,7 @@ namespace TheodoliteReaderUSB
         }
 
         /// <summary>
-        /// Use this method to set the raw GSI string. The raw string is then parsed and the resultant values are available.
+        /// Use this method to set the raw GSI string. The raw string is then automatically parsed.
         /// </summary>
         public string Raw
         {
@@ -159,6 +158,8 @@ namespace TheodoliteReaderUSB
                 update();
             }
         }
+        
+        //  Retreive parsed data.
         public int PointNumber
         {
             get
@@ -227,198 +228,283 @@ namespace TheodoliteReaderUSB
             }
             finally
             {
-                //Default to max value.
+                //Default to max value to indicate that an error has occured.
                 pointNumber = Int32.MaxValue;
             }
 
         }
+
         private void parseHorizontalAngle(string word)
         {
-            var units = (Convert.ToInt32(Convert.ToString(word[5])));
-            var sign = word[6];
-            var data = Convert.ToDecimal(word.Substring(7));
-
-            if (data != 0)
+            try
             {
-                data *= 0.00001m;
-            }
+                var units = (Convert.ToInt32(Convert.ToString(word[5])));
+                var sign = word[6];
+                var data = Convert.ToDecimal(word.Substring(7));
 
-            if (units == (int)GSIUnits.DECIMAL_360)
-            {
-                switch (horizontalAngleMode)
+                if (data != 0)
                 {
-                    case HorizontalAngleMode.PLUS_MINUS_180:
-                        //convert from 0 to 360, to +- 180
-                        if (data >= 180)
-                        {
-                            data -= 360;
-                        }
-                        //'+' indicates that theodolite is set to increase to the right.
-                        if (sign == '-')
-                        {
-                            data *= -1;
-                        }
-                        break;
-                    case HorizontalAngleMode.ZERO_TO_360:
-
-                        break;
-
-                    default:
-                        break;
+                    data *= 0.00001m;
                 }
-                
-                
-            }
 
-            horizontalAngle =  Math.Round(data, 6);
-        }
-        private void parseVerticalAngle(string word)
-        {
-            var units = (Convert.ToInt32(Convert.ToString(word[5])));
-            var sign = word[6];
-            var data = Convert.ToDecimal(word.Substring(7));
-
-            if (data != 0.0m)
-            {
-                data *= 0.00001m;
-            }
-                        
-            if (units == (int)GSIUnits.DECIMAL_360)
-            {
-                switch (verticalAngleMode)
+                if (units == (int)GSIUnits.DECIMAL_360)
                 {
-                    case VerticalAngleMode.PLUS_MINUS_180:
-                        {
-                            if (data >= 180 && data < 360)
+                    switch (horizontalAngleMode)
+                    {
+                        case HorizontalAngleMode.PLUS_MINUS_180:
+                            //convert from 0 to 360, to +- 180
+                            if (data >= 180)
                             {
-                                data -= 270;
+                                data -= 360;
                             }
-                            else if (data < 180 && data >= 0)
+                            //'+' indicates that theodolite is set to increase to the right.
+                            if (sign == '-')
                             {
-                                data -= 90;
                                 data *= -1;
                             }
-                        }
-                        break;
-                    case VerticalAngleMode.ZERO_TO_360:
-                        {
+                            break;
+                        case HorizontalAngleMode.ZERO_TO_360:
 
-                        }
-                        break;
+                            break;
+
+                        default:
+                            break;
+                    }
 
                 }
+                horizontalAngle = Math.Round(data, 6);
             }
-            else
+            catch
             {
-                throw new Exception("Vertical measurement unit is incorrect. Only use decimal degrees.");
+            }
+            finally
+            {
+                //Default to max value to indicate that an error has occured.
+                horizontalAngle = Int32.MaxValue;
+            }
+        }
+
+        private void parseVerticalAngle(string word)
+        {
+            try
+            {
+                var units = (Convert.ToInt32(Convert.ToString(word[5])));
+                var sign = word[6];
+                var data = Convert.ToDecimal(word.Substring(7));
+
+                if (data != 0.0m)
+                {
+                    data *= 0.00001m;
+                }
+
+                if (units == (int)GSIUnits.DECIMAL_360)
+                {
+                    switch (verticalAngleMode)
+                    {
+                        case VerticalAngleMode.PLUS_MINUS_180:
+                            {
+                                if (data >= 180 && data < 360)
+                                {
+                                    data -= 270;
+                                }
+                                else if (data < 180 && data >= 0)
+                                {
+                                    data -= 90;
+                                    data *= -1;
+                                }
+                            }
+                            break;
+                        case VerticalAngleMode.ZERO_TO_360:
+                            {
+
+                            }
+                            break;
+
+                    }
+                }
+                else
+                {
+                    throw new Exception("Vertical measurement unit is incorrect. Only use decimal degrees.");
+                }
+                verticalAngle = Math.Round(data, 6);
+            }
+            catch
+            {
+            }
+            finally
+            {
+                //Default to max value to indicate that an error has occured.
+                verticalAngle = Int32.MaxValue;
             }
 
-            verticalAngle = Math.Round(data, 6);
-            
         }
+
         private void parseSlopeDistance(string word)
         {
-            var units = (Convert.ToInt32(Convert.ToString(word[5])));
-            var sign = word[6];
-            var data = Convert.ToDecimal(word.Substring(7));
-
-            if(units == (int)GSIUnits.METER)
+            try
             {
-                //Move decimal.
-                if (data != 0)
-                {
-                    data *= 0.001m;
-                }
+                var units = (Convert.ToInt32(Convert.ToString(word[5])));
+                var sign = word[6];
+                var data = Convert.ToDecimal(word.Substring(7));
 
-                slopeDistance = data;
+                if (units == (int)GSIUnits.METER)
+                {
+                    //Move decimal.
+                    if (data != 0)
+                    {
+                        data *= 0.001m;
+                    }
+
+                    slopeDistance = data;
+                }
+            }
+            catch
+            {
+            }
+            finally
+            {
+                //Default to max value to indicate that an error has occured.
+                slopeDistance = Int32.MaxValue;
             }
         }
+
         private void parseHorizontalDistance(string word)
         {
-            var units = (Convert.ToInt32(Convert.ToString(word[5])));
-            var sign = word[6];
-            var data = Convert.ToDecimal(word.Substring(7));
-
-            if (units == (int)GSIUnits.METER)
+            try
             {
-                //Move decimal.
-                if (data != 0)
+                var units = (Convert.ToInt32(Convert.ToString(word[5])));
+                var sign = word[6];
+                var data = Convert.ToDecimal(word.Substring(7));
+
+                if (units == (int)GSIUnits.METER)
                 {
-                    data *= 0.001m;
+                    //Move decimal.
+                    if (data != 0)
+                    {
+                        data *= 0.001m;
+                    }
+                    if (sign == '-')
+                    {
+                        data *= -1;
+                    }
+                    horizontalDistance = data;
                 }
-                if (sign == '-')
-                {
-                    data *= -1;
-                }
-                horizontalDistance = data;
             }
+            catch
+            {
+            }
+            finally
+            {
+                //Default to max value to indicate that an error has occured.
+                horizontalDistance = Int32.MaxValue;
+            }
+
         }
+
         private void parseTargetEasting(string word)
         {
-            var units = (Convert.ToInt32(Convert.ToString(word[5])));
-            var sign = word[6];
-            var data = Convert.ToDecimal(word.Substring(7));
-
-            if (units == (int)GSIUnits.METER)
+            try
             {
-                //Move decimal.
-                if (data != 0)
-                {
-                    data *= 0.001m;
-                }
+                var units = (Convert.ToInt32(Convert.ToString(word[5])));
+                var sign = word[6];
+                var data = Convert.ToDecimal(word.Substring(7));
 
-                if (sign == '-')
+                if (units == (int)GSIUnits.METER)
                 {
-                    data *= -1;
-                }
+                    //Move decimal.
+                    if (data != 0)
+                    {
+                        data *= 0.001m;
+                    }
 
-                targetEasting = data;
+                    if (sign == '-')
+                    {
+                        data *= -1;
+                    }
+
+                    targetEasting = data;
+                }
             }
+            catch
+            {
+            }
+            finally
+            {
+                //Default to max value to indicate that an error has occured.
+                targetEasting = Int32.MaxValue;
+            }
+
         }
+
         private void parseTargetNorthing(string word)
         {
-            var units = (Convert.ToInt32(Convert.ToString(word[5])));
-            var sign = word[6];
-            var data = Convert.ToDecimal(word.Substring(7));
-
-            if (units == (int)GSIUnits.METER)
+            try
             {
-                //Move decimal.
-                if (data != 0)
-                {
-                    data *= 0.001m;
-                }
+                var units = (Convert.ToInt32(Convert.ToString(word[5])));
+                var sign = word[6];
+                var data = Convert.ToDecimal(word.Substring(7));
 
-                if (sign == '-')
+                if (units == (int)GSIUnits.METER)
                 {
-                    data *= -1;
-                }
+                    //Move decimal.
+                    if (data != 0)
+                    {
+                        data *= 0.001m;
+                    }
 
-                targetNorthing = data;
+                    if (sign == '-')
+                    {
+                        data *= -1;
+                    }
+
+                    targetNorthing = data;
+                }
+            }
+            catch
+            {
+            }
+            finally
+            {
+                //Default to max value to indicate that an error has occured.
+                targetNorthing = Int32.MaxValue;
             }
         }
+
         private void parseTargetElevation(string word)
         {
-            var units = (Convert.ToInt32(Convert.ToString(word[5])));
-            var sign = word[6];
-            var data = Convert.ToDecimal(word.Substring(7));
-
-            if (units == (int)GSIUnits.METER)
+            try
             {
-                //Move decimal.
-                if (data != 0)
-                {
-                    data *= 0.001m;
-                }
+                var units = (Convert.ToInt32(Convert.ToString(word[5])));
+                var sign = word[6];
+                var data = Convert.ToDecimal(word.Substring(7));
 
-                if (sign == '-')
+                if (units == (int)GSIUnits.METER)
                 {
-                    data *= -1;
-                }
+                    //Move decimal.
+                    if (data != 0)
+                    {
+                        data *= 0.001m;
+                    }
 
-                targetElevation = data;
-                horizontalDistance = data;  //I am finding that elevationa dn horizontal distance are always the same.
+                    if (sign == '-')
+                    {
+                        data *= -1;
+                    }
+
+                    targetElevation = data;
+                    horizontalDistance = data;  //I am finding that elevationa dn horizontal distance are always the same.
+                }
             }
+            catch
+            {
+            }
+            finally
+            {
+                //Default to max value to indicate that an error has occured.
+                targetElevation = Int32.MaxValue;
+                horizontalDistance = Int32.MaxValue;
+            }
+
         }
     }
 }
