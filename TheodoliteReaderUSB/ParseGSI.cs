@@ -5,11 +5,11 @@
 //  between the instrument and the computer.GSI uses a simple command structure to read/write values
 //  from/to the sensor.Global and instrument specific Word Indexes (WI) are used to specify various data types."
 //
-//  This class will parse a GSI formatted string and extract some information. Not all GSI features are supported by my class.
-//  The information I wish to extract is limited and therefore this class is limited:
+//  This class will parse a GSI formatted string and extract some information. Not all GSI features are supported by this class.
+//  The information which is extracted is limited and therefore this class is limited:
 //      -All distance data must be in meters.
 //      -All spherical measurements must be in decimal degrees.
-//      -Only the WIs listed in the private member fields are supported.
+//      -Only the WIs listed in the private member 'fields' are supported.
 
 using System;
 using System.Collections.Generic;
