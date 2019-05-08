@@ -2,15 +2,22 @@
 //  Written by: George Marsden III
 //  03/29/2019
 //
-//  "Leica Geo Serial Interface (GSI) is a generis a general purpose, serial data interface for bi-directional communication
-//  between the instrument and the computer. GSI uses a simple command structure to read/write values
-//  from/to the sensor. Global and instrument specific Word Indexes (WI) are used to specify various data types."
+//  "Leica Geo Serial Interface (GSI) is a generis a general purpose, 
+//  serial data interface for bi-directional communication between the 
+//  instrument and the computer. GSI uses a simple command structure to 
+//  read/write values from/to the sensor. Global and instrument specific 
+//  Word Indexes (WI) are used to specify various data types."
 //  Excerpt from:
 //  https://w3.leica-geosystems.com/media/new/product_solution/gsi_manual.pdf
 //
-//  This class will parse a GSI formatted string and then extract some information. The extracted information can be retreived by the various 'get' methods.
+//  This class will parse a GSI formatted string and then extract some information. 
+//  The extracted information can be retreived by the various 'get' methods.
 //  
-//  Not all GSI features are supported by this class.
+//  Not all GSI features are supported by this class. Only METER and DECIMAL_360
+//  units are currently supported.
+//
+// EXAMPLE GSI8:
+//      "110001+0000A110 81..00+00005387 82..00-00000992"
 
 using System;
 using System.Linq;
@@ -20,7 +27,7 @@ namespace TheodoliteReaderUSB
     public enum GSIDataFormat { GSI8, GSI16 };
     public enum VerticalAngleMode { ZERO_TO_360, PLUS_MINUS_180 };
     public enum HorizontalAngleMode { ZERO_TO_360, PLUS_MINUS_180 };
-    public enum GSIUnits { METER, FEET, GON, DECIMAL_360, SEXAGESIMAL, MIL6400, METER_ONE_TENTH, FEET_ONE_TENTHOUSANTH, METER_ONE_HUNDREDTH}
+    public enum GSIUnits { METER, FEET, GON, DECIMAL_360, SEXAGESIMAL, MIL6400, METER_ONE_TENTH, FEET_ONE_TENTHOUSANTH, METER_ONE_HUNDREDTH }    //  Only METER and DECIMAL_360 units are currently supported.
 
     class ParseGSI
     {
@@ -33,9 +40,10 @@ namespace TheodoliteReaderUSB
         private const string TARGET_EASTING = "81";
         private const string TARGET_NORTHING = "82";
         private const string TARGET_ELEVATION = "83";
-        
+
         private static string rawGSIString;
 
+        //  Measurement modes
         private static HorizontalAngleMode horizontalAngleMode;
         private static VerticalAngleMode verticalAngleMode;
         private static GSIDataFormat wordFormat;
@@ -72,7 +80,7 @@ namespace TheodoliteReaderUSB
         /// </summary>
         /// <param name="vrMode"></param>
         public ParseGSI(VerticalAngleMode vrMode) : base()
-        {            
+        {
             verticalAngleMode = vrMode;
         }
         /// <summary>
@@ -87,21 +95,14 @@ namespace TheodoliteReaderUSB
         }
 
         /// <summary>
-        /// This method is called everytime rawGSIString is updated with a call to Raw.
+        /// This method is called everytime rawGSIString is set.
         /// </summary>
         private void update()
         {
             try
             {
-                if (rawGSIString.ElementAt(0) == '*')
-                {
-                    wordFormat = GSIDataFormat.GSI16;
-                }
-                else
-                {
-                    wordFormat = GSIDataFormat.GSI8;
-                }
-
+                wordFormat = (rawGSIString.ElementAt(0) == '*') ? GSIDataFormat.GSI16 :GSIDataFormat.GSI8;
+                
                 rawGSIString = rawGSIString.ToString().TrimEnd('\r', '\n');
                 rawGSIString = rawGSIString.ToString().TrimEnd(' ');
                 string[] words = rawGSIString.Split(' ');
@@ -148,7 +149,7 @@ namespace TheodoliteReaderUSB
         }
 
         /// <summary>
-        /// Use this method to set the raw GSI string. The raw string is then automatically parsed.
+        /// Use this method to set the raw GSI string. The raw string is then parsed by a call to update().
         /// </summary>
         public string Raw
         {
@@ -158,65 +159,41 @@ namespace TheodoliteReaderUSB
                 update();
             }
         }
-        
+    
         //  Retreive parsed data.
         public int PointNumber
         {
-            get
-            {
-                return pointNumber;
-            }
+            get => pointNumber;
         }
         public Decimal HorizontalAngle
         {
-            get
-            {
-                return horizontalAngle;
-            }
+            get => horizontalAngle;
         }
         public Decimal VerticalAngle
         {
-            get
-            {
-                return verticalAngle;
-            }
+            get => verticalAngle;
         }
         public Decimal SlopeDistance
         {
-            get
-            {
-                return slopeDistance;
-            }
+            get => slopeDistance;
         }
         public Decimal HorizontalDistance
         {
-            get
-            {
-                return horizontalDistance;
-            }
+            get => horizontalDistance;
         }
         public Decimal TargetEasting
         {
-            get
-            {
-                return targetEasting;
-            }
+            get => targetEasting;
         }
         public Decimal TargetNorthing
         {
-            get
-            {
-                return targetNorthing;
-            }
+            get => targetNorthing;
         }
         public Decimal TargetElevation
         {
-            get
-            {
-                return targetElevation;
-            }
+            get => targetElevation;
         }
-
+        
         private void parsePointNumber(string word)
         {
             try
@@ -321,10 +298,6 @@ namespace TheodoliteReaderUSB
                             break;
 
                     }
-                }
-                else
-                {
-                    throw new Exception("Vertical measurement unit is incorrect. Only use decimal degrees.");
                 }
                 verticalAngle = Math.Round(data, 6);
             }
@@ -490,9 +463,9 @@ namespace TheodoliteReaderUSB
                     {
                         data *= -1;
                     }
-
+                    //Target elevation and horizontal distance are the same measurement.
                     targetElevation = data;
-                    horizontalDistance = data;  //I am finding that elevationa dn horizontal distance are always the same.
+                    horizontalDistance = data;  
                 }
             }
             catch
